@@ -1,0 +1,34 @@
+[project]
+name = "shophub-assistant"
+version = "0.1.0"
+description = "Multi-tenant order-support agent (LangGraph + JSON-RPC sub-agent)"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.29",
+  "httpx>=0.27",
+  "langgraph>=0.2.60",
+  "langchain-core>=0.3",
+  "langgraph-checkpoint-sqlite>=2.0",
+  "langgraph-checkpoint-postgres>=2.0",
+  "aiosqlite>=0.20",
+  "psycopg[binary,pool]>=3.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.23"]
+anthropic = ["langchain-anthropic"]
+openai = ["langchain-openai"]
+ollama = ["langchain-ollama"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["common", "store_api", "orders_agent", "orchestrator", "chat_api", "evals"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+asyncio_mode = "auto"
+testpaths = ["tests"]
