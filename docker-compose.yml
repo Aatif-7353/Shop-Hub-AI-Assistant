@@ -1,0 +1,53 @@
+# One command: docker compose up --build
+# Fake LLM by default, so no API key is needed. Tokens below are dev-only fixtures from store_api/seed.py.
+x-app: &app
+  build: .
+  restart: unless-stopped
+  environment: &env
+    LLM_PROVIDER: ${LLM_PROVIDER:-fake}
+    LLM_MODEL: ${LLM_MODEL:-}
+    STORE_API_URL: http://store-api:8001
+    ORDERS_AGENT_URL: http://orders-agent:8002
+    PUBLIC_URL: http://orders-agent:8002   # URL the agent card advertises (used by the orchestrator)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: shophub
+      POSTGRES_PASSWORD: shophub_dev_only
+      POSTGRES_DB: shophub
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shophub -d shophub"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  store-api:
+    <<: *app
+    command: ["uvicorn", "store_api.main:app", "--host", "0.0.0.0", "--port", "8001"]
+    environment: {<<: *env, PORT: "8001"}
+    ports: ["8001:8001"]
+
+  orders-agent:
+    <<: *app
+    command: ["uvicorn", "orders_agent.main:app", "--host", "0.0.0.0", "--port", "8002"]
+    environment: {<<: *env, PORT: "8002"}
+    depends_on:
+      store-api: {condition: service_healthy}
+    ports: ["8002:8002"]
+
+  orchestrator:
+    <<: *app
+    environment:
+      <<: *env
+      PORT: "8000"
+      CHECKPOINT_DB_URL: postgresql://shophub:shophub_dev_only@postgres:5432/shophub
+    depends_on:
+      postgres: {condition: service_healthy}
+      orders-agent: {condition: service_healthy}
+    ports: ["8000:8000"]
+
+volumes:
+  pgdata:
